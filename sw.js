@@ -1,5 +1,5 @@
-const CACHE_NAME = "chatbot-ia-v1";
-const urlsToCache = ["./chatbot.html", "./manifest.json"];
+const CACHE_NAME = "chatbot-ia-v2";
+const urlsToCache = ["./index.html", "./manifest.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

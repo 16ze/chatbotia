@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <meta name="theme-color" content="#667eea" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Mon IA Assistant" />
+    <!-- <link rel="manifest" href="manifest.json"> -->
+    <title>Mon Assistant IA</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: white;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .chat-container {
+        width: 100%;
+        max-width: 450px;
+        height: 100vh;
+        background: white;
+        border-radius: 0;
+        box-shadow: none;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      @media (min-width: 768px) {
+        body {
+          padding: 20px;
+        }
+
+        .chat-container {
+          width: 450px;
+          height: 650px;
+          border-radius: 20px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+      }
+
+      .chat-header {
+        background: white;
+        color: black;
+        padding: 0px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 20px;
+        border-bottom: 1px solid #dee2e6;
+      }
+
+      .connection-status {
+        background: #28a745;
+        color: white;
+        padding: 8px;
+        text-align: center;
+        font-size: 12px;
+        transition: opacity 0.5s ease-out;
+      }
+
+      .connection-status.fade-out {
+        opacity: 0;
+      }
+
+      .connection-status.error {
+        background: #dc3545;
+      }
+
+      .connection-status.warning {
+        background: #ffc107;
+        color: #212529;
+      }
+
+      .chat-messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #f8f9fa;
+      }
+
+      .message {
+        margin-bottom: 15px;
+        padding: 12px 16px;
+        border-radius: 18px;
+        max-width: 85%;
+        min-width: fit-content;
+        width: fit-content;
+        word-wrap: break-word;
+        animation: slideIn 0.3s ease-out;
+        line-height: 1.4;
+      }
+
+      .user-message {
+        background: #007bff;
+        color: white;
+        margin-left: auto;
+      }
+
+      .bot-message {
+        background: #e9ecef;
+        color: #495057;
+        margin-right: auto;
+        border-left: 4px solid #007bff;
+      }
+
+      .loading {
+        background: #fff3cd;
+        color: #856404;
+        margin-right: auto;
+        font-style: italic;
+        border-left: 4px solid #ffc107;
+      }
+
+      .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        margin-right: auto;
+        border-left: 4px solid #dc3545;
+      }
+
+      .success-message {
+        background: #d4edda;
+        color: #155724;
+        margin-right: auto;
+        border-left: 4px solid #28a745;
+      }
+
+      .chat-input {
+        display: flex;
+        padding: 20px;
+        background: white;
+        border-top: 1px solid #dee2e6;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .upload-button {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        color: #6c757d;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        transition: all 0.2s;
+        position: relative;
+      }
+
+      .upload-button:hover {
+        background: #e9ecef;
+        border-color: #667eea;
+        color: #667eea;
+      }
+
+      .upload-input {
+        display: none;
+      }
+
+      .input-field {
+        flex: 1;
+        padding: 12px 16px;
+        border: 2px solid #e9ecef;
+        border-radius: 25px;
+        outline: none;
+        font-size: 14px;
+        transition: border-color 0.3s;
+      }
+
+      .input-field:focus {
+        border-color: #667eea;
+      }
+
+      .voice-button {
+        background: transparent;
+        color: #667eea;
+        border: none;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        transition: all 0.2s;
+      }
+
+      .voice-button:hover:not(:disabled) {
+        color: #5a67d8;
+        background: rgba(102, 126, 234, 0.1);
+        transform: scale(1.05);
+      }
+
+      .voice-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .voice-button.recording {
+        color: #dc3545;
+        background: rgba(220, 53, 69, 0.1);
+        animation: pulse-recording 1s infinite;
+      }
+
+      @keyframes pulse-recording {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      .upload-preview {
+        display: none;
+        padding: 10px;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .upload-preview.show {
+        display: flex;
+      }
+
+      .upload-preview img {
+        max-width: 60px;
+        max-height: 60px;
+        border-radius: 4px;
+      }
+
+      .upload-preview .file-info {
+        flex: 1;
+        font-size: 12px;
+        color: #6c757d;
+      }
+
+      .upload-preview .remove-file {
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .typing-indicator {
+        display: none;
+        padding: 12px 16px;
+        margin-right: auto;
+        background: #e9ecef;
+        border-radius: 18px;
+        max-width: 85%;
+        min-width: fit-content;
+        width: fit-content;
+        border-left: 4px solid #007bff;
+      }
+
+      .typing-indicator.show {
+        display: block;
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.6;
+        }
+      }
+
+      .retry-button {
+        background: #ffc107;
+        color: #212529;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 11px;
+        margin-left: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="chat-header">
+        <svg
+          width="180"
+          height="75"
+          viewBox="0 0 375 375"
+          fill="black"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <g>
+            <path
+              d="M 92.894531 250.980469 L 116.792969 250.980469 L 116.792969 222.25 L 189.679688 142.230469 L 160.835938 142.230469 L 116.804688 189.757812 L 116.804688 142.230469 L 92.894531 142.230469 Z M 137.386719 216.683594 L 163.089844 250.980469 L 191.792969 250.980469 L 152.269531 199.679688 Z"
+            />
+            <path
+              d="M 236.503906 160.570312 L 225.46875 179.65625 L 219.675781 169.601562 L 217.777344 172.894531 L 183.691406 231.835938 L 175.425781 246.160156 C 174.578125 247.632812 173.355469 248.828125 171.929688 249.652344 C 170.507812 250.476562 168.859375 250.925781 167.136719 250.925781 C 163.714844 250.925781 160.570312 249.101562 158.847656 246.132812 C 157.148438 243.1875 157.148438 239.546875 158.847656 236.578125 L 211.359375 145.722656 C 213.058594 142.753906 216.230469 140.929688 219.648438 140.929688 C 223.070312 140.929688 226.214844 142.753906 227.914062 145.722656 L 234.78125 157.625 Z"
+            />
+            <path
+              d="M 280.453125 236.625 L 255.480469 193.40625 L 244.445312 212.496094 L 255.605469 231.835938 L 225.34375 231.835938 L 240.472656 205.632812 L 251.511719 186.546875 L 265.496094 162.367188 C 267.242188 159.347656 267.191406 155.601562 265.394531 152.609375 C 261.597656 146.421875 252.558594 146.519531 248.9375 152.808594 L 240.472656 167.457031 L 229.4375 186.546875 L 203.242188 231.835938 L 197.402344 241.964844 C 196.75 243.089844 196.527344 244.261719 196.601562 245.410156 C 196.601562 245.511719 196.628906 245.585938 196.628906 245.683594 C 196.628906 245.734375 196.628906 245.757812 196.628906 245.808594 C 196.628906 245.835938 196.628906 245.882812 196.652344 245.910156 C 196.675781 246.007812 196.703125 246.132812 196.726562 246.234375 C 196.75 246.382812 196.800781 246.507812 196.828125 246.65625 C 197.050781 247.40625 197.425781 248.078125 197.875 248.679688 C 198 248.828125 198.125 248.976562 198.25 249.101562 C 199.324219 250.226562 200.820312 250.925781 202.546875 250.925781 L 224.46875 250.925781 L 272.113281 250.925781 C 275.53125 250.925781 278.679688 249.101562 280.375 246.132812 C 282.148438 243.214844 282.148438 239.570312 280.453125 236.625 Z"
+            />
+            <path
+              d="M 280.191406 133.558594 C 280.335938 134.167969 280.417969 134.789062 280.441406 135.417969 C 280.464844 136.046875 280.425781 136.671875 280.324219 137.292969 C 280.222656 137.914062 280.0625 138.519531 279.84375 139.109375 C 279.621094 139.699219 279.347656 140.261719 279.015625 140.796875 C 278.683594 141.332031 278.304688 141.828125 277.875 142.289062 C 277.445312 142.75 276.976562 143.164062 276.464844 143.53125 C 275.957031 143.898438 275.414062 144.214844 274.839844 144.476562 C 274.269531 144.738281 273.675781 144.941406 273.0625 145.085938 C 272.449219 145.230469 271.828125 145.3125 271.199219 145.335938 C 270.570312 145.355469 269.945312 145.316406 269.324219 145.21875 C 268.703125 145.117188 268.097656 144.957031 267.507812 144.738281 C 266.917969 144.515625 266.355469 144.242188 265.820312 143.910156 C 265.285156 143.578125 264.785156 143.199219 264.324219 142.769531 C 263.863281 142.34375 263.449219 141.871094 263.082031 141.363281 C 262.714844 140.851562 262.398438 140.308594 262.136719 139.738281 C 261.875 139.164062 261.671875 138.574219 261.527344 137.960938 C 261.382812 137.347656 261.300781 136.726562 261.277344 136.097656 C 261.253906 135.46875 261.292969 134.847656 261.394531 134.226562 C 261.496094 133.605469 261.65625 133 261.875 132.410156 C 262.097656 131.820312 262.371094 131.257812 262.703125 130.722656 C 263.035156 130.1875 263.414062 129.6875 263.84375 129.226562 C 264.273438 128.769531 264.742188 128.355469 265.253906 127.984375 C 265.761719 127.617188 266.304688 127.304688 266.878906 127.042969 C 267.449219 126.78125 268.042969 126.578125 268.65625 126.433594 C 269.269531 126.289062 269.890625 126.207031 270.519531 126.183594 C 271.148438 126.160156 271.773438 126.199219 272.394531 126.300781 C 273.015625 126.402344 273.621094 126.5625 274.210938 126.78125 C 274.800781 127 275.363281 127.277344 275.898438 127.609375 C 276.433594 127.9375 276.933594 128.316406 277.394531 128.746094 C 277.855469 129.175781 278.269531 129.644531 278.636719 130.15625 C 279.003906 130.667969 279.320312 131.207031 279.582031 131.78125 C 279.84375 132.351562 280.046875 132.945312 280.191406 133.558594 Z"
+            />
+          </g>
+        </svg>
+      </div>
+
+      <div class="connection-status" id="connectionStatus">
+        ⟳ Test de connexion...
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="message bot-message">
+          Bonjour Bryan, comment puis-je t'aider aujourd'hui ?
+        </div>
+      </div>
+
+      <div class="typing-indicator" id="typingIndicator">⋯</div>
+
+      <div class="upload-preview" id="uploadPreview">
+        <div class="file-info" id="fileInfo"></div>
+        <button class="remove-file" onclick="removeFile()">×</button>
+      </div>
+
+      <div class="chat-input">
+        <button
+          class="upload-button"
+          onclick="document.getElementById('fileInput').click()"
+        >
+          +
+        </button>
+        <input
+          type="file"
+          class="upload-input"
+          id="fileInput"
+          accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+          onchange="handleFileUpload(event)"
+        />
+        <input
+          type="text"
+          class="input-field"
+          id="messageInput"
+          placeholder="Message"
+          onkeypress="handleKeyPress(event)"
+        />
+        <button
+          class="voice-button"
+          onclick="toggleVoiceRecording()"
+          id="voiceButton"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"
+            />
+            <path
+              d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <script>
+      // Configuration
+      const WEBHOOK_URL =
+        "https://n8n.srv854076.hstgr.cloud/webhook/chatbot-ai";
+
+      // Variables globales
+      let sessionId = `session_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+      let isConnected = false;
+      let mediaRecorder = null;
+      let audioChunks = [];
+      let isRecording = false;
+      let uploadedFile = null;
+
+      // Service Worker pour PWA
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js").catch(console.error);
+      }
+
+      // Test de connexion au démarrage
+      async function testConnection() {
+        const statusElement = document.getElementById("connectionStatus");
+
+        try {
+          statusElement.textContent = "⟳ Test de connexion n8n...";
+          statusElement.className = "connection-status warning";
+
+          const response = await fetch(WEBHOOK_URL, {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+          });
+
+          console.log("⟳ Test de connexion:", response.status);
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log("⟵ Réponse du serveur:", data);
+
+            isConnected = true;
+            statusElement.textContent = "✓ Connecté à l'IA - Prêt à discuter !";
+            statusElement.className = "connection-status";
+
+            // Faire disparaître le message de succès après 3 secondes
+            setTimeout(() => {
+              statusElement.classList.add("fade-out");
+              setTimeout(() => {
+                statusElement.style.display = "none";
+                statusElement.classList.remove("fade-out");
+              }, 500);
+            }, 3000);
+
+            if (data.response) {
+              addMessage(data.response, false, "bot");
+            }
+          } else if (response.status === 404) {
+            isConnected = true;
+            statusElement.textContent = "✓ Serveur n8n détecté - Prêt !";
+            statusElement.className = "connection-status";
+
+            // Faire disparaître le message de succès après 3 secondes
+            setTimeout(() => {
+              statusElement.classList.add("fade-out");
+              setTimeout(() => {
+                statusElement.style.display = "none";
+                statusElement.classList.remove("fade-out");
+              }, 500);
+            }, 3000);
+          } else {
+            throw new Error(`HTTP ${response.status}`);
+          }
+        } catch (error) {
+          console.error("⚠ Erreur de connexion:", error);
+          isConnected = false;
+          statusElement.textContent = "⚠ Connexion échouée - Vérifiez n8n";
+          statusElement.className = "connection-status error";
+        }
+      }
+
+      function addMessage(message, isUser = false, type = "bot") {
+        const messagesContainer = document.getElementById("chatMessages");
+        const messageDiv = document.createElement("div");
+
+        let className = "message ";
+        if (isUser) {
+          className += "user-message";
+        } else {
+          switch (type) {
+            case "error":
+              className += "error-message";
+              break;
+            case "success":
+              className += "success-message";
+              break;
+            case "loading":
+              className += "loading";
+              break;
+            default:
+              className += "bot-message";
+          }
+        }
+
+        messageDiv.className = className;
+        messageDiv.innerHTML = message;
+
+        if (type === "error") {
+          const retryButton = document.createElement("button");
+          retryButton.className = "retry-button";
+          retryButton.textContent = "⟳ Réessayer";
+          retryButton.onclick = () => retryLastMessage();
+          messageDiv.appendChild(retryButton);
+        }
+
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      function showTyping() {
+        document.getElementById("typingIndicator").classList.add("show");
+      }
+
+      function hideTyping() {
+        document.getElementById("typingIndicator").classList.remove("show");
+      }
+
+      async function sendMessage(retryMessage = null) {
+        const messageInput = document.getElementById("messageInput");
+        const sendButton = document.getElementById("sendButton");
+
+        let message;
+        if (retryMessage) {
+          message = retryMessage;
+        } else {
+          message = messageInput.value.trim();
+          if (!message) return;
+          messageInput.value = "";
+        }
+
+        if (!isConnected) {
+          // Réafficher le statut en cas d'erreur
+          const statusElement = document.getElementById("connectionStatus");
+          statusElement.style.display = "block";
+          statusElement.classList.remove("fade-out");
+
+          addMessage(
+            "⚠ Pas de connexion. Test de reconnexion...",
+            false,
+            "error"
+          );
+          await testConnection();
+          if (!isConnected) {
+            return;
+          }
+        }
+
+        if (!retryMessage) {
+          let displayMessage = message;
+          if (uploadedFile) {
+            displayMessage += ` [Fichier: ${uploadedFile.name}]`;
+          }
+          addMessage(displayMessage, true);
+        }
+
+        const voiceButton = document.getElementById("voiceButton");
+        voiceButton.disabled = true;
+        showTyping();
+
+        try {
+          const requestData = {
+            message: message,
+            timestamp: new Date().toISOString(),
+            user_id: `user_${Date.now()}`,
+            session_id: sessionId,
+            has_file: uploadedFile ? true : false,
+            file_name: uploadedFile ? uploadedFile.name : null,
+            file_type: uploadedFile ? uploadedFile.type : null,
+            file_size: uploadedFile ? uploadedFile.size : null,
+          };
+
+          console.log("⟶ Envoi vers IA:", requestData);
+
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+          const response = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(requestData),
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          console.log("← Statut réponse:", response.status);
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log(
+              "← Réponse IA complète:",
+              JSON.stringify(data, null, 2)
+            );
+            console.log("← Réponse extraite:", data.response);
+
+            hideTyping();
+
+            if (data.response && data.response.trim()) {
+              let cleanResponse = data.response.trim();
+              cleanResponse = cleanResponse
+                .replace(/\\n/g, "\n")
+                .replace(/\\"/g, '"');
+
+              console.log(
+                "← Réponse nettoyée qui sera affichée:",
+                cleanResponse
+              );
+              addMessage(cleanResponse, false, "bot");
+
+              // Nettoyer le fichier uploadé après envoi
+              if (uploadedFile) {
+                removeFile();
+              }
+
+              const statusElement = document.getElementById("connectionStatus");
+              statusElement.textContent = "✓ Agent IA a répondu !";
+              statusElement.className = "connection-status";
+              statusElement.style.display = "block";
+
+              // Faire disparaître le message de succès après 2 secondes
+              setTimeout(() => {
+                statusElement.classList.add("fade-out");
+                setTimeout(() => {
+                  statusElement.style.display = "none";
+                  statusElement.classList.remove("fade-out");
+                }, 500);
+              }, 2000);
+            } else {
+              console.log("⚠ Aucune réponse valide dans:", data);
+              addMessage(
+                " L'Agent IA n'a pas généré de réponse. Réessayez avec une question plus spécifique.",
+                false,
+                "error"
+              );
+            }
+          } else {
+            throw new Error(
+              `Erreur HTTP ${response.status}: ${response.statusText}`
+            );
+          }
+        } catch (error) {
+          hideTyping();
+          console.error("⚠ Erreur:", error);
+
+          let errorMessage = "⚠ Erreur de communication avec l'IA. ";
+
+          if (error.name === "AbortError") {
+            errorMessage += "Délai d'attente dépassé (30s).";
+          } else if (error.message.includes("fetch")) {
+            errorMessage += "Problème de connexion réseau.";
+          } else {
+            errorMessage += error.message;
+          }
+
+          addMessage(errorMessage, false, "error");
+          window.lastFailedMessage = message;
+        } finally {
+          voiceButton.disabled = false;
+        }
+      }
+
+      function retryLastMessage() {
+        if (window.lastFailedMessage) {
+          sendMessage(window.lastFailedMessage);
+        }
+      }
+
+      function handleKeyPress(event) {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          sendMessage();
+        }
+      }
+
+      // Gestion de l'upload de fichiers
+      function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        uploadedFile = file;
+        const preview = document.getElementById("uploadPreview");
+        const fileInfo = document.getElementById("fileInfo");
+
+        // Afficher le preview
+        preview.classList.add("show");
+
+        if (file.type.startsWith("image/")) {
+          const img = document.createElement("img");
+          img.src = URL.createObjectURL(file);
+          fileInfo.innerHTML = "";
+          fileInfo.appendChild(img);
+          fileInfo.innerHTML += `<div>${file.name}<br><small>${(
+            file.size /
+            1024 /
+            1024
+          ).toFixed(2)} MB</small></div>`;
+        } else {
+          fileInfo.innerHTML = `
+            <div>📄 ${file.name}</div>
+            <div><small>${(file.size / 1024 / 1024).toFixed(2)} MB</small></div>
+          `;
+        }
+      }
+
+      function removeFile() {
+        uploadedFile = null;
+        document.getElementById("uploadPreview").classList.remove("show");
+        document.getElementById("fileInput").value = "";
+      }
+
+      // Gestion de l'enregistrement vocal
+      async function toggleVoiceRecording() {
+        const voiceButton = document.getElementById("voiceButton");
+
+        if (!isRecording) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+              audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = () => {
+              const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+              sendVoiceMessage(audioBlob);
+              stream.getTracks().forEach((track) => track.stop());
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+            voiceButton.classList.add("recording");
+            voiceButton.innerHTML = "⏹";
+          } catch (error) {
+            console.error("Erreur d'accès au microphone:", error);
+            addMessage(
+              "⚠ Impossible d'accéder au microphone. Vérifiez les permissions.",
+              false,
+              "error"
+            );
+          }
+        } else {
+          mediaRecorder.stop();
+          isRecording = false;
+          voiceButton.classList.remove("recording");
+          voiceButton.innerHTML = "🎙";
+        }
+      }
+
+      function sendVoiceMessage(audioBlob) {
+        // Créer un fichier audio temporaire
+        const audioFile = new File([audioBlob], "voice_message.wav", {
+          type: "audio/wav",
+        });
+
+        // Afficher un message temporaire
+        addMessage("♪ Message vocal envoyé", true);
+
+        // Ici vous pouvez traiter l'audio (transcription, envoi au serveur, etc.)
+        console.log("Message vocal enregistré:", audioFile);
+
+        // Pour l'instant, on simule une transcription
+        setTimeout(() => {
+          addMessage(
+            "Transcription du message vocal en cours...",
+            false,
+            "loading"
+          );
+          setTimeout(() => {
+            addMessage(
+              "Désolé, la transcription vocale n'est pas encore implémentée. Utilisez le texte pour le moment.",
+              false,
+              "bot"
+            );
+          }, 2000);
+        }, 500);
+      }
+
+      // Initialisation
+      document.addEventListener("DOMContentLoaded", function () {
+        document.getElementById("messageInput").focus();
+        setTimeout(testConnection, 1000);
+      });
+
+      setInterval(() => {
+        if (!isConnected) {
+          testConnection();
+        }
+      }, 30000);
+    </script>
+  </body>
+</html>
